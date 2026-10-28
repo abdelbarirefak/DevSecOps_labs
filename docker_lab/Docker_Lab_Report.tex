@@ -1,0 +1,346 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{float}
+
+\definecolor{primary}{RGB}{20, 80, 160}
+\definecolor{secondary}{RGB}{40, 120, 200}
+\definecolor{codegray}{RGB}{245, 247, 250}
+\definecolor{codeborder}{RGB}{210, 220, 235}
+\definecolor{accentbox}{RGB}{235, 243, 252}
+\definecolor{darkgray}{RGB}{60, 60, 60}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    urlcolor=primary,
+    citecolor=primary,
+    pdftitle={Docker Lab: Your First Image - Comprehensive Evaluation Report}
+}
+
+\lstset{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    captionpos=b,
+    frame=single,
+    rulecolor=\color{codeborder},
+    keywordstyle=\color{primary}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{teal},
+    showstringspaces=false
+}
+
+\begin{document}
+
+% --- TITLE & HEADER ---
+\begin{center}
+    {\LARGE \textbf{\color{primary} Docker Lab: Your First Image}}\\[0.3cm]
+\end{center}
+
+\noindent
+\begin{minipage}[t]{0.55\textwidth}
+    \textbf{Étudiant :} Abdelbari Refak \\
+    \textbf{Module :} DevSecOps (S5) \\
+    \textbf{Date :} \today
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.42\textwidth}
+     
+\end{minipage}
+
+\vspace{0.5cm}
+
+\section{Introduction \& Initialisation (Setup)}
+
+Ce laboratoire pratique aborde le cycle de vie complet de conteneurisation Docker, allant de l'exécution et de l'inspection de conteneurs existants jusqu'au durcissement de sécurité (exécution non-root, analyse Trivy) et la publication sur un registre privé distant (GitLab Container Registry).
+
+\subsection{Vérification de l'environnement}
+L'environnement local fonctionne sous Docker Desktop / WSL2 (Linux kernel standard). L'initialisation a été validée avec l'image officielle \texttt{hello-world}.
+
+\noindent\textbf{Question Q1. The image hello-world was not on your machine. Describe in your own words the steps Docker performed to show you this message:}\\[0.2cm]
+This is what Docker explains about what it just did:
+\begin{quote}
+Hello from Docker!\\
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+\begin{enumerate}
+    \item The Docker client contacted the Docker daemon.
+    \item The Docker daemon pulled the "hello-world" image from the Docker Hub. (amd64)
+    \item The Docker daemon created a new container from that image which runs the executable that produces the output you are currently reading.
+\end{enumerate}
+\end{quote}
+
+\noindent and this is what i think it does:
+\begin{itemize}
+    \item \textbf{1\_Checked your computer:} The system looked for the "hello-world" blueprint locally and realized it was missing.
+    \item \textbf{2\_Sent the request:} The command line tool you typed into passed your instructions to the main Docker engine operating in the background.
+    \item \textbf{3\_Downloaded the files:} Because the blueprint was missing, the background engine connected to an online library (Docker Hub) and downloaded the necessary "hello-world" files directly to your machine.
+    \item \textbf{4\_Ran the program:} The engine used those newly downloaded files to create an active, isolated environment (a container). It then ran the program inside that environment, which printed the welcome message to your screen.
+\end{itemize}
+
+% --- PART 1 ---
+\newpage
+\section{Part 1 : Exécution et Inspection de Conteneurs Existants}
+
+\subsection{Démarrage et observation du serveur Web Nginx}
+Un conteneur \texttt{nginx:1.27} a été instancié en arrière-plan (\texttt{-d}) sous le nom \texttt{web}, avec le port 80 du conteneur publié sur le port local 8080.
+\begin{lstlisting}[language=bash]
+docker run -d --name web -p 8080:80 nginx:1.27
+docker ps
+docker logs web
+docker exec -it web sh
+ls /usr/share/nginx/html
+exit
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/3.2_nginx_ps.png}
+    \caption{Vérification du conteneur Nginx actif avec \texttt{docker ps} (Port 8080 $\rightarrow$ 80).}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/3.2_nginx_logs.png}
+    \caption{Consultation des journaux d'exécution du serveur Nginx via \texttt{docker logs web}.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/3.2_nginx_exec.png}
+    \caption{Exploration interactive du système de fichiers interne via \texttt{docker exec -it web sh}.}
+\end{figure}
+
+\subsection{Arrêt, suppression et cycle de vie}
+Les commandes \texttt{docker stop web} et \texttt{docker rm web} permettent de vérifier la persistance de l'image sur l'hôte même après la destruction de l'instance de conteneur.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/3.3_docker_stop.png}
+    \caption{Arrêt du conteneur avec \texttt{docker stop web}.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/3.3_docker_ps_a.png}
+    \caption{Inspection des conteneurs arrêtés avec \texttt{docker ps -a}.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/3.3_docker_images.png}
+    \caption{Confirmation de la persistance de l'image \texttt{nginx:1.27} après \texttt{docker rm web}.}
+\end{figure}
+
+\noindent\textbf{Question Q2. After docker rm web, the nginx image is still listed. What is the difference between an image and a container?}\\[0.2cm]
+An image is a template, whereas a container is a running copy of that image.
+\begin{itemize}
+    \item \textbf{Image:} This acts as a reusable blueprint where the application and its necessary environment travel together.
+    \item \textbf{Container:} This is the active, running instance that is created from the image template.
+\end{itemize}
+Because they are two distinct concepts, stopping and removing a container only deletes the running copy of the app. The original image template is left intact on your machine and will still be listed until you specifically delete the image itself.
+
+% --- PART 2 ---
+\newpage
+\section{Part 2 : Création de la Première Image Docker}
+
+\subsection{Préparation de l'application Python et test local}
+La micro-application de salutation est composée de \texttt{app.py} et d'un serveur HTTP natif \texttt{server.py} écoutant sur le port 8000.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\textwidth]{images/4.1_local_test_world.png}
+    \hfill
+    \includegraphics[width=0.48\textwidth]{images/4.1_local_test_ana.png}
+    \caption{Test du serveur Python en local : route par défaut et paramètre \texttt{?name=Ana}.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/4.1_server_logs.png}
+    \caption{Journaux d'écoute du serveur HTTP Python (\texttt{python3 server.py}).}
+\end{figure}
+
+\subsection{Création du Dockerfile initial}
+Dans la branche Git \texttt{feature/11-dockerfile}, le Dockerfile v1.0 a été rédigé :
+\begin{lstlisting}[language=bash]
+FROM python:3.12-slim
+WORKDIR /app
+COPY app.py server.py ./
+EXPOSE 8000
+CMD ["python", "server.py"]
+\end{lstlisting}
+
+\subsection{Construction, exécution et commit conventionnel}
+L'image a été construite sous le tag \texttt{greet:1.0}, puis lancée et testée avec \texttt{curl}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/4.3_docker_build_curl.png}
+    \caption{Construction de l'image \texttt{greet:1.0}, lancement du conteneur et test HTTP \texttt{curl}.}
+\end{figure}
+
+Le livrable Git a été consigné conformément aux conventions de commit :
+\begin{lstlisting}[language=bash]
+git commit -m "feat(docker): add Dockerfile (#11)"
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/4.3_git_commit_issue11.png}
+    \caption{Validation du commit conventionnel pour l'Issue \#11 sur la branche dédiée.}
+\end{figure}
+
+% --- PART 3 ---
+\newpage
+\section{Part 3 : Compréhension des Couches, Cache et .dockerignore}
+
+\subsection{Inspection des couches de l'image}
+La commande \texttt{docker history greet:1.0} affiche la structure en couches superposées créées par chaque instruction du Dockerfile.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/5.1_docker_history.png}
+    \caption{Analyse des couches de l'image \texttt{greet:1.0} avec \texttt{docker history}.}
+\end{figure}
+
+\subsection{Mise en évidence du cache de build}
+Lors d'une modification du code source dans \texttt{app.py}, les couches antérieures (\texttt{WORKDIR /app}) restent en état \texttt{CACHED}, accélérant considérablement le temps de build.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/5.2_docker_cached_build.png}
+    \caption{Démonstration de la réutilisation des couches en cache (\texttt{CACHED}) lors de la reconstruction.}
+\end{figure}
+
+\subsection{Sécurisation du contexte avec .dockerignore}
+Le fichier \texttt{.dockerignore} empêche l'injection accidentelle de secrets ou de fichiers temporaires dans le contexte de build :
+\begin{lstlisting}
+.git
+.venv
+__pycache__/
+.env
+\end{lstlisting}
+
+\noindent\textbf{Question Q3. Why were the first layers reused when you rebuilt? What would happen if you copied your code before installing the dependencies of a larger project?}\\[0.2cm]
+The first layers were reused because Docker saves the result of each instruction as a cache, and it recognized that the steps before the COPY command had not been altered. Instead of doing the same work twice, Docker just reused those saved layers and only rebuilt the parts from COPY onwards because that is where the files actually changed.
+
+If I were to copy my application code before installing the dependencies for a larger project, any small change I make to my code would invalidate the cache for that step. Since Docker rebuilds everything that comes after a changed layer, it would have to completely re-download and reinstall all the project dependencies every single time I edit my code, defeating the purpose of ordering the Dockerfile to use the cache efficiently.
+
+% --- PART 4 ---
+\newpage
+\section{Part 4 : Sécurisation DevSecOps (Non-Root \& Scan Trivy)}
+
+\subsection{Détection de l'exécution avec privilèges Root}
+L'exécution de la commande \texttt{whoami} à l'intérieur du conteneur en cours d'exécution révèle que l'application tourne par défaut sous le compte super-utilisateur \texttt{root}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/6.1_whoami_root.png}
+    \caption{Constat de la vulnérabilité : l'application s'exécute avec l'utilisateur \texttt{root}.}
+\end{figure}
+
+\subsection{Audit automatisé avec Trivy}
+Le scanner de sécurité Trivy (\texttt{aquasec/trivy:0.75.0}) a été exécuté en mode conteneur pour analyser le Dockerfile. Il a remonté une anomalie de sévérité \textbf{HIGH} (règle \texttt{DS-0002}) :
+\begin{quote}
+\textit{DS-0002 (HIGH): specify at least 1 USER command in Dockerfile with non-root user as argument. Running containers with root user can lead to a container escape situation.}
+\end{quote}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/6.2_trivy_vulnerability.png}
+    \caption{Scan de vulnérabilité Trivy signalant l'alerte HIGH (absence d'instruction USER non-root).}
+\end{figure}
+
+\subsection{Remédiation et Durcissement du Dockerfile}
+Sur une nouvelle branche Git \texttt{fix/12-non-root}, le Dockerfile a été modifié pour créer et utiliser un utilisateur non-privilégié \texttt{appuser} :
+\begin{lstlisting}[language=bash]
+FROM python:3.12-slim
+RUN useradd --create-home appuser
+USER appuser
+WORKDIR /home/appuser
+COPY app.py server.py ./
+EXPOSE 8000
+CMD ["python", "server.py"]
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/6.3_non_root_build_whoami.png}
+    \caption{Reconstruction sous le tag \texttt{greet:1.1} et confirmation avec \texttt{whoami} de l'identité \texttt{appuser}.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/6.4_trivy_clean_commit.png}
+    \caption{Nouveau scan Trivy propre (Clean / 0 vulnérabilité) et commit conventionnel (\#12).}
+\end{figure}
+
+\noindent\textbf{Question Q4. Why is running a container as root dangerous even though the container is isolated?}\\[0.2cm]
+Running a container as root is dangerous because if an attacker exploits a vulnerability in your app, they start with maximum rights inside the container. Even though containers are isolated, having root access makes a potential attack much worse, as it gives the attacker the tools and permissions they need to attempt a "container breakout" and potentially compromise the host machine.
+
+% --- PART 5 ---
+\newpage
+\section{Part 5 : Publication sur le Registre Privé GitLab}
+
+\subsection{Authentification sécurisée avec Personal Access Token}
+La connexion au registre Docker de GitLab s'effectue de manière sécurisée en injectant le Personal Access Token via l'entrée standard (\texttt{--password-stdin}) :
+\begin{lstlisting}[language=bash]
+echo "<your-token>" | docker login registry.gitlab.com -u abdelbarirefak --password-stdin
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/7.1_docker_login_tag.png}
+    \caption{Authentification réussie au registre GitLab et marquage (tag) de l'image \texttt{1.1}.}
+\end{figure}
+
+\subsection{Tagging et Push vers GitLab Container Registry}
+L'image durcie a été étiquetée avec précision puis téléversée sur le registre de projet :
+\begin{lstlisting}[language=bash]
+docker tag greet:1.1 registry.gitlab.com/abdelbari-group/devsecops-lab/greet:1.1
+docker push registry.gitlab.com/abdelbari-group/devsecops-lab/greet:1.1
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/7.2_docker_push.png}
+    \caption{Publication des couches de l'image vers le dépôt distant GitLab.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/7.3_gitlab_registry_ui.png}
+    \caption{Interface GitLab Container Registry confirmant la disponibilité de l'image \texttt{greet:1.1}.}
+\end{figure}
+
+\noindent\textbf{Question Q5. We pushed the tag 1.1 and never used latest. Why is a precise version tag better?}\\[0.2cm]
+If I just rely on the latest tag, it acts like a moving target because it can be overwritten anytime someone pushes a new update to the registry. By using a precise tag like 1.1, I know exactly which version of the code and environment I am downloading, ensuring the application runs predictably every time and doesn't suddenly break due to unexpected background changes.
+
+% --- PART 6 ---
+\newpage
+\section{Part 6 : Nettoyage et Revue des Bonnes Pratiques}
+
+\subsection{Nettoyage des conteneurs et des images orphelines}
+Après publication, les ressources locales ont été supprimées et nettoyées avec \texttt{docker image prune}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/8.1_cleanup_prune.png}
+    \caption{Nettoyage complet des conteneurs locaux et récupération d'espace disque.}
+\end{figure}
+
+\subsection{Dockerfile Checklist Review (Synthèse Finale)}
+\colorbox{accentbox}{%
+    \parbox{\dimexpr\textwidth-2\fboxsep\relax}{%
+        \textbf{Revue formelle de conformité :}\\[0.2cm]
+        My Dockerfile successfully meets all the security and best-practice requirements outlined in the final checklist. First, the base image version is strictly pinned by starting from \texttt{python:3.12-slim}. Second, the container safely runs as a non-root user because the configuration creates and switches to \texttt{appuser}. Additionally, a \texttt{.dockerignore} file is in place to guarantee that no local secrets or unnecessary junk files are accidentally copied into the image during the build process. Finally, as a result of these configurations, the Trivy security scan passes without finding any root-access vulnerabilities.
+    }%
+}
+
+\vspace{0.6cm}
+
+
+\end{document}

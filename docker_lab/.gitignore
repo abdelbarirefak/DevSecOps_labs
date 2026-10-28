@@ -1,0 +1,18 @@
+# Ignore all lab files by default.
+*
+
+# Keep this allowlist in the repository.
+!/.gitignore
+
+# Allow the application and its Docker files.
+!/code/
+!/code/**
+
+# Do not track generated Python bytecode.
+/code/**/__pycache__/
+
+# Allow the README and requested reports.
+!/README.md
+!/Docker_Lab_Report.pdf
+!/Docker_Lab_Report.tex
+!/docker-lab (1).pdf
