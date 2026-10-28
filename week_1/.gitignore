@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Caches and test tools
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Java build artifacts
+*.class
+target/
+*.jar
+*.war
+*.ear
+
+# IDE and Editor files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
